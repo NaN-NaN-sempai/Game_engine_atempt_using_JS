@@ -1,0 +1,228 @@
+<html>
+
+    <style>
+        body{
+            background-color: aquamarine;
+        }
+        #gameTab {
+            background: blue;
+        }
+        input {
+            width: 50%;
+        }
+        p {
+            font-size: 25px;
+        }
+        #plyb{
+            height: 50px;
+            font-size: 30px;
+        }
+    </style>
+
+    <body onkeypress="sendKey(event.key, true)" onkeyup="sendKey(event.key, false)">
+        <div id="gameTab"></div>
+        
+        <button onclick="onclickLog()">LOG</button>
+        <br>
+        <br>
+        <button id="plyb" onclick="startGame()">START</button>
+        <br>
+        <p>Followers Amount</p>
+        <input type="range" min="0" max="1000" step="1" value="1" oninput="followersAmount = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <br>
+        <br>
+        <p>Border Radius</p>
+        <input type="range" min="0" max="100" step="0.000001" value="0" oninput="guiBorderRadius = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <br>
+        <p>Movemet Smoothness</p>
+        <input type="range" min="0" max="1" step="0.000001" value="0.01" oninput="moveLerpAmount = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <br>
+        <p>Movemet Speed</p>
+        <input type="range" min="0" max="50" step="0.000001" value="5" oninput="moveSpeed = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <br>
+        <p>Player Size</p>
+        <input type="range" min="0" max="2" step="0.000001" value="1" oninput="psize = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <br>
+        <p>Follower MovementSmoothness</p>
+        <input type="range" min="0" max="1" step="0.000001" value="0.01" oninput="followersMoveSpeed = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        
+    </body>
+
+    <script src="operations.js"></script>
+    <script src="inputManager.js"></script>
+    <script>
+        gameTabSize = {y: 650, x: 1650}
+        gameTab = document.getElementById("gameTab");
+        gameTab.style.height = gameTabSize.y+"px";
+        gameTab.style.width = gameTabSize.x+"px";
+        
+
+        gameObjSize = 100+"px";
+
+
+        class gameObject {
+            constructor(rawObj){
+                var gameObj = document.createElement('div');
+                gameObj.id = rawObj.id;
+                gameObj.style.width = gameObj.style.height = rawObj.size + "px";
+                gameObj.style.background = rawObj.background;
+                gameObj.style.position = "absolute";
+                [gameObj.style.left, gameObj.style.top] = rawObj.pos.map((e)=>{return (e-(rawObj.size/2))+"px"});
+                gameObj.style.borderRadius = rawObj.borderRadius + "%"
+
+                gameTab.appendChild(gameObj);
+
+                var htmlElem = document.getElementById(rawObj.id)
+
+                this.object = htmlElem;
+                this.transform = htmlElem.style;
+            }
+            position(pos){
+                if(pos != undefined){
+                    this.transform.left = pos.x + "px";
+                    this.transform.top = pos.y + "px";
+                } else {
+                    return {x: parseFloat(this.transform.left), y: parseFloat(this.transform.top)}
+                }    
+            }
+            addPosition(pos){
+                if(pos != undefined){
+                    this.transform.left = (parseFloat(this.transform.left) + pos.x) + "px";
+                    this.transform.top = (parseFloat(this.transform.top) + pos.y) + "px";
+                } else {
+                    return {x: parseFloat(this.transform.left), y: parseFloat(this.transform.top)}
+                } 
+            }
+            size(size){
+                if(size == undefined){
+                    return {x: parseFloat(this.transform.width), y: parseFloat(this.transform.height)}
+                } else if(size.y != undefined){
+                    this.transform.width = size.x
+                    this.transform.height = size.y
+                } else {
+                    this.transform.width = this.transform.height = size.x
+                }
+            }
+        }
+
+        var keyHandler = {}
+        var registerKey = (key) => {
+            if(!keyHandler[key]){
+                objParse = JSON.parse('{"'+key+'": {"state": '+false+'}}')
+                keyHandler = Object.assign(keyHandler, objParse)
+                logger("Key registred in keyHandler: "+key)
+            }         
+        }
+        var sendKey = (key, holding) => {
+            //console.log(key)
+            key = (key==" ")?"space":key.toLowerCase();
+            
+            registerKey(key)
+            keyHandler[key].state = holding
+
+            logger("Key pressed: "+key)
+        }
+        var onKey = (key) => {
+            registerKey(key);
+            return keyHandler[key].state;
+        }
+        
+        
+
+        //START FUNCTION
+        var guiBorderRadius = 0;
+
+        var followersAmount = 25;
+        var followers = []
+        var colorLerp = 255;
+        var player;
+        var start = () => {
+            player = new gameObject({id: "player", size: 100, background: "red", pos: [(gameTabSize.x/2), (gameTabSize.y/2)], borderRadius: guiBorderRadius})
+
+            followersAmount;
+            followers = []
+            for(i = 0; i < followersAmount; i++){
+                colorLerp = operations.lerp(colorLerp, 0, 1/followersAmount)
+                followers.push(new gameObject({id: "follower"+i, size: 100, background: "rgb("+colorLerp+","+colorLerp+","+colorLerp+")", pos: [(gameTabSize.x/2), (gameTabSize.y/2)], borderRadius: guiBorderRadius}))
+            }
+        } 
+
+
+        //UPDATE FUNCTION
+        var moveSpeed = 5;
+        var xyInput, input3d; moveLerpAmount = 0.01, psize = 1;
+        var followersMoveSpeed = 0.01;
+
+        var update = () => {
+            //opration.multiValueLerp and inputManager.Vector2 
+            xyInput = operations.MVL(xyInput, ipt.Vector2("a", "d", "w", "s"), moveLerpAmount);
+
+            //opration.multiValueLerp and inputManager.Vector3
+            input3d = operations.MVL(input3d, ipt.Vector3("a", "d", "space", "c", "w", "s"), moveLerpAmount)
+
+            if(!true){
+                //aplying Vectors to gameObject
+                player.transform.left = (parseFloat(player.transform.left) + (moveSpeed * xyInput.x)) + "px";
+                player.transform.top = (parseFloat(player.transform.top) + (moveSpeed * xyInput.y)) + "px";
+            } else {
+                //aplying Vector dinamicaly using the function gameObject.addPosition
+                if(!true){
+                    //raw new created Vector2
+                    player.addPosition({x: moveSpeed * xyInput.x, y: moveSpeed * xyInput.y})
+                } else if(!true){
+                    //multiplied xyInput
+                    player.addPosition(operations.multiplyVectors(xyInput, moveSpeed))
+                } else {
+                    //multiplied using Object.prototype
+                    player.addPosition(xyInput.multipliedBy(moveSpeed))
+                }
+            }
+
+            operationVal = 0.01;
+            if(onKey("e")){
+                psize += operationVal
+            } else if(onKey("q")){
+                psize -= operationVal
+            }
+
+            //resizing a gameObject using gameObject.size()
+            player.size({x: [100*psize]})
+
+
+            //creating anothers gameObjects
+            followers[0].position(operations.MVL(followers[0].position(), player.position(), followersMoveSpeed))
+            followers[0].size(operations.MVL(followers[0].size(), player.size(), followersMoveSpeed))
+            for(i = 1; i< followers.length; i++){
+                followers[i].position(operations.MVL(followers[i].position(), followers[i-1].position(), followersMoveSpeed))
+            followers[i].size(operations.MVL(followers[i].size(), followers[i-1].size(), followersMoveSpeed))
+            }
+        }
+
+        
+        
+
+        var logging = "", loggingIndex = 0;
+        var logger = (event, err) => {
+            textLog = (err==undefined?"":"Error => ") + event
+            if(err == "error"){
+                throw textLog
+            }
+            logging += "["+(loggingIndex++) + "]: " + textLog +"\n"
+        }
+        var onclickLog = () => {
+            window.open('').document.write('<html><style>#txtA{font-size:20px;height:100%;width:100%;}</style><textarea readonly id='+'txtA'+'>'+logging+'</textarea></html>')
+            //window.open('').document.write('<html><style>#txtA{font-size:20px;height:100%;width:100%;}</style><textarea readonly id='+'txtA'+'>'+JSON.stringify(keyHandler, null, 2)+'</textarea></html>')
+        }
+
+
+        frameRate = 1;
+        var updateInterval;
+        var startGame = () => {
+            start();
+            updateInterval = setInterval(update, frameRate);
+        }
+        if(!true){
+            startGame()
+        }
+    </script>
+</html>
