@@ -1,5 +1,4 @@
 <html>
-
     <style>
         body{
             background-color: aquamarine;
@@ -7,7 +6,7 @@
         #gameTab {
             background: blue;
         }
-        input {
+        input[type=range]{
             width: 50%;
         }
         p {
@@ -19,210 +18,238 @@
         }
     </style>
 
-    <body onkeypress="sendKey(event.key, true)" onkeyup="sendKey(event.key, false)">
+    <body>
         <div id="gameTab"></div>
-        
-        <button onclick="onclickLog()">LOG</button>
+
+        <button onclick="openLogTab()">LOG</button>
+        <input type="checkbox" checked="true" oninput="logCollapse = this.checked"><span>colapse log</span>
         <br>
+        <br>
+        <p id="clicked">start the game</p>
         <br>
         <button id="plyb" onclick="startGame()">START</button>
         <br>
-        <p>Followers Amount</p>
-        <input type="range" min="0" max="1000" step="1" value="1" oninput="followersAmount = this.value; this.nextSibling.innerHTML = this.value"><span></span>
         <br>
+        <p>Followers Amount</p>
+        <input type="range" min="0" max="1000" step="1" value="1" oninput="followersAmount = parseFloat(this.value); this.nextSibling.innerHTML = this.value"><span></span>
         <br>
         <p>Border Radius</p>
-        <input type="range" min="0" max="100" step="0.000001" value="0" oninput="guiBorderRadius = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <input type="range" min="0" max="100" step="0.000001" value="0" oninput="playerBorderRadius = parseFloat(this.value); this.nextSibling.innerHTML = this.value"><span></span>
         <br>
-        <p>Movemet Smoothness</p>
-        <input type="range" min="0" max="1" step="0.000001" value="0.01" oninput="moveLerpAmount = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <p>Player Movemet Smoothness</p>
+        <input type="range" min="0" max="1" step="0.000001" value="0.01" oninput="moveLerpAmount = parseFloat(this.value); this.nextSibling.innerHTML = this.value"><span></span>
         <br>
         <p>Movemet Speed</p>
-        <input type="range" min="0" max="50" step="0.000001" value="5" oninput="moveSpeed = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <input type="range" min="0" max="50" step="0.000001" value="5" oninput="moveSpeed = parseFloat(this.value); this.nextSibling.innerHTML = this.value"><span></span>
         <br>
         <p>Player Size</p>
-        <input type="range" min="0" max="2" step="0.000001" value="1" oninput="psize = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <input type="range" min="0" max="2" step="0.000001" value="1" oninput="psize = parseFloat(this.value); this.nextSibling.innerHTML = this.value"><span></span>
         <br>
-        <p>Follower MovementSmoothness</p>
-        <input type="range" min="0" max="1" step="0.000001" value="0.01" oninput="followersMoveSpeed = this.value; this.nextSibling.innerHTML = this.value"><span></span>
+        <p>Follower Movement Smoothness</p>
+        <input type="range" min="0" max="1" step="0.000001" value="0.01" oninput="followersLerpAmount = parseFloat(this.value); this.nextSibling.innerHTML = this.value"><span></span>
+        <br>
+        <p>Side Walkers Bounceness</p>
+        <input type="range" min="0" max="1000" step="0.000001" value="0" oninput="moveAmount = parseFloat(this.value); this.nextSibling.innerHTML = this.value"><span></span>
         
     </body>
 
-    <script src="operations.js"></script>
-    <script src="inputManager.js"></script>
+    <script src="internals.js"></script> <!-- ESSENTIAL! -->
+    <script src="operations.js"></script> <!-- useful stuff -->
+    <script src="inputManager.js"></script> <!-- useful stuff -->
     <script>
-        gameTabSize = {y: 650, x: 1650}
-        gameTab = document.getElementById("gameTab");
-        gameTab.style.height = gameTabSize.y+"px";
-        gameTab.style.width = gameTabSize.x+"px";
+        //remove this to stop the "no startGame()" message
+        //logger("Theres no trigger for starting this game.\nPaste startGame() on the console or create a new way to start it.\nthis error is being thrown by a logger in the first line of the gameScript, remove it to stop this message.", "error")
+    
+
         
+        var player; //variable to store the "player" gameObject
+        var playerBorderRadius = 0;
+        var moveSpeed = 5;
+        var moveVector; moveLerpAmount = 0.01, psize = 1;
 
-        gameObjSize = 100+"px";
+        var followers = [] //variable to store all "followers", a game object that move to the exactly position of the "player"
+        var followersAmount = 0;
+        var followersLerpAmount = 0.01;
+        var colorLerp = 255; //variable to store the color of the "followers". When they are created, the collor shifts
 
+        var pleft, pright; //side walkers variables
+        var moveAmount = 0; //for side walkers
 
-        class gameObject {
-            constructor(rawObj){
-                var gameObj = document.createElement('div');
-                gameObj.id = rawObj.id;
-                gameObj.style.width = gameObj.style.height = rawObj.size + "px";
-                gameObj.style.background = rawObj.background;
-                gameObj.style.position = "absolute";
-                [gameObj.style.left, gameObj.style.top] = rawObj.pos.map((e)=>{return (e-(rawObj.size/2))+"px"});
-                gameObj.style.borderRadius = rawObj.borderRadius + "%"
-
-                gameTab.appendChild(gameObj);
-
-                var htmlElem = document.getElementById(rawObj.id)
-
-                this.object = htmlElem;
-                this.transform = htmlElem.style;
-            }
-            position(pos){
-                if(pos != undefined){
-                    this.transform.left = pos.x + "px";
-                    this.transform.top = pos.y + "px";
-                } else {
-                    return {x: parseFloat(this.transform.left), y: parseFloat(this.transform.top)}
-                }    
-            }
-            addPosition(pos){
-                if(pos != undefined){
-                    this.transform.left = (parseFloat(this.transform.left) + pos.x) + "px";
-                    this.transform.top = (parseFloat(this.transform.top) + pos.y) + "px";
-                } else {
-                    return {x: parseFloat(this.transform.left), y: parseFloat(this.transform.top)}
-                } 
-            }
-            size(size){
-                if(size == undefined){
-                    return {x: parseFloat(this.transform.width), y: parseFloat(this.transform.height)}
-                } else if(size.y != undefined){
-                    this.transform.width = size.x
-                    this.transform.height = size.y
-                } else {
-                    this.transform.width = this.transform.height = size.x
-                }
-            }
-        }
-
-        var keyHandler = {}
-        var registerKey = (key) => {
-            if(!keyHandler[key]){
-                objParse = JSON.parse('{"'+key+'": {"state": '+false+'}}')
-                keyHandler = Object.assign(keyHandler, objParse)
-                logger("Key registred in keyHandler: "+key)
-            }         
-        }
-        var sendKey = (key, holding) => {
-            //console.log(key)
-            key = (key==" ")?"space":key.toLowerCase();
-            
-            registerKey(key)
-            keyHandler[key].state = holding
-
-            logger("Key pressed: "+key)
-        }
-        var onKey = (key) => {
-            registerKey(key);
-            return keyHandler[key].state;
-        }
-        
-        
+        var elementInsidePlayer; //variable to store a element that will be inserted inside "player"
 
         //START FUNCTION
-        var guiBorderRadius = 0;
-
-        var followersAmount = 25;
-        var followers = []
-        var colorLerp = 255;
-        var player;
         var start = () => {
-            player = new gameObject({id: "player", size: 100, background: "red", pos: [(gameTabSize.x/2), (gameTabSize.y/2)], borderRadius: guiBorderRadius})
+            var playerStart = function(){
+                this.style.borderRadius = "50%"
+                this.style.background = "red"
+            }
+            var playerUpdate = function(){
+                //exemple of using operations.multipleValueLerp and inputManager.Vector2 to move a gameObject
+                moveVector = operations.MVL(moveVector, ipt.Vector2("a", "d", "w", "s", onKey), moveLerpAmount)
+                this.addPosition(moveVector.multipliedBy(moveSpeed))
+                this.style.borderRadius = playerBorderRadius+"px";
+                this.size(psize*100)
+            }
+
+            player = new gameObject({
+                id: "player",
+                startSize: 100,
+                startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                //using existing function
+                start: playerStart,
+                update: playerUpdate
+                /* 
+                    define update function of this gameObject
+                    can also be defined using a raw function:
+                    update: function(){
+                        this.addPosition(ipt.Vector1("a", "d"))
+                    }
+
+                    *arrow functions works only if it doens't use the this operator
+                */
+            })
 
             followersAmount;
             followers = []
             for(i = 0; i < followersAmount; i++){
                 colorLerp = operations.lerp(colorLerp, 0, 1/followersAmount)
-                followers.push(new gameObject({id: "follower"+i, size: 100, background: "rgb("+colorLerp+","+colorLerp+","+colorLerp+")", pos: [(gameTabSize.x/2), (gameTabSize.y/2)], borderRadius: guiBorderRadius}))
+                followers.push(new gameObject({
+                    id: "follower"+i,
+                    startSize: 100,
+                    startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                    customProps: {
+                        index: i,
+                        color: colorLerp
+                    },
+                    //using raw functions
+                    start: function(){
+                        //use any CSS style using gameObject.style
+                        this.style.background = "rgb("+this.customProps.color+","+this.customProps.color+","+this.customProps.color+")"
+                        this.style.borderRadius = "50%"
+                    },
+                    update: function(){
+                        //move towards the last object of the array using operation.multipleValuseLerp
+                        this.position(
+                            //using operation.MVL
+                            operations.MVL(
+                                this.position(), //get the actual position
+                                (this.customProps.index==0?
+                                    player.position()
+                                    :
+                                    followers[this.customProps.index-1].position()), //get the wondered position, the last item in the array followers
+                                followersLerpAmount) //set the lerping amount
+                        )
+                    }
+                }))
             }
+        
+
+            var offset = 150
+            //sidewalker pleft's position is beening calculated to get the interpolation between it's posiiton and player position
+            pleft = new gameObject({
+                id: "pleft",
+                startSize: 100,
+                startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                customProps: {
+                    moreOffset: 0, side: true
+                },
+                //using raw functions
+                start: function(){
+                    this.style.background = player.style.background
+                    this.style.borderRadius = "50%"
+                },
+                update: function(){
+                    //console.log(player.position().x);
+                    this.position(operations.MVL(this.position(), player.position().sumedTo(new Vector({x: offset+this.customProps.moreOffset, y: 0})), followersLerpAmount))
+
+                    if(this.customProps.moreOffset >= moveAmount){
+                        this.customProps.side = false
+                    } else if(this.customProps.moreOffset <= -moveAmount){
+                        this.customProps.side = true
+                    }
+                    if(this.customProps.side){
+                        this.customProps.moreOffset = operations.lerp(this.customProps.moreOffset, moveAmount+1, followersLerpAmount)
+                    } else {
+                        this.customProps.moreOffset = operations.lerp(this.customProps.moreOffset, -(moveAmount+1), followersLerpAmount)
+                    }
+
+                    this.size(operations.MVL(this.size(), player.size(), followersLerpAmount))
+                }
+            })
+
+            //sidewalker pright's position is being directed seted to be the player position + offset by the update function
+            pright = new gameObject({
+                id: "pright",
+                startSize: 100,
+                startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                customProps: {
+                    moreOffset: 0, side: true
+                },
+                //using raw functions
+                start: function(){
+                    this.style.background = player.style.background
+                    this.style.borderRadius = "50%"
+                },
+                update: function(){
+                    this.position(player.position().sumedTo(new Vector({x: -offset-this.customProps.moreOffset, y: 0})))
+                    if(this.customProps.moreOffset >= moveAmount){
+                        this.customProps.side = false
+                    } else if(this.customProps.moreOffset <= -moveAmount){
+                        this.customProps.side = true
+                    }
+                    if(this.customProps.side){
+                        this.customProps.moreOffset = operations.lerp(this.customProps.moreOffset, moveAmount+1, followersLerpAmount)
+                    } else {
+                        this.customProps.moreOffset = operations.lerp(this.customProps.moreOffset, -(moveAmount+1), followersLerpAmount)
+                    }
+
+                    this.size(operations.MVL(this.size(), player.size(), followersLerpAmount))
+                }
+            })
+            
+
+
+            //this gameObject is inserted inside the "player".
+            elementInsidePlayer = new gameObject({
+                id: "inside Player",
+                appendTo: "player",
+                customProps: {clickedTimes: 0},
+                start: function(){
+                    this.style.background = "Chartreuse"
+                    this.style.borderRadius = "50%"
+                    //exemple of usage of onclick HTML event
+                    this.object.onclick = () => {
+                        console.log("someone clicked on me!")
+                        document.getElementById("clicked").innerHTML = "you clicked on the green circle "+(++this.customProps.clickedTimes)+" times!"
+                    }
+                    document.getElementById("clicked").innerHTML = "click on the green circle!"
+                },
+                update: function(){
+                    /* 
+                        this gameObject is inserted on another gameObject, no on the gameTab, so it's positions depends on it's parent position
+                        seting it's position to the "player" (it's parent) may cause some unexpected results
+                        exemple: 
+                        this.position(player.position())
+                    */
+                    this.addPosition(new Vector(.05,0))
+                    /* 
+                        do: this.addPosition(ipt.Vector2("h", "k", "u", "j").multipliedBy(moveSpeed))
+                        to move it, separately of the "player", using h, k, u and j.
+                        *note that the "player" position will stay affection it's position
+                    */
+                }
+            })
+            
         } 
 
 
-        //UPDATE FUNCTION
-        var moveSpeed = 5;
-        var xyInput, input3d; moveLerpAmount = 0.01, psize = 1;
-        var followersMoveSpeed = 0.01;
-
+        //MAIN UPDATE FUNCTION
         var update = () => {
-            //opration.multiValueLerp and inputManager.Vector2 
-            xyInput = operations.MVL(xyInput, ipt.Vector2("a", "d", "w", "s"), moveLerpAmount);
-
-            //opration.multiValueLerp and inputManager.Vector3
-            input3d = operations.MVL(input3d, ipt.Vector3("a", "d", "space", "c", "w", "s"), moveLerpAmount)
-
-            if(!true){
-                //aplying Vectors to gameObject
-                player.transform.left = (parseFloat(player.transform.left) + (moveSpeed * xyInput.x)) + "px";
-                player.transform.top = (parseFloat(player.transform.top) + (moveSpeed * xyInput.y)) + "px";
-            } else {
-                //aplying Vector dinamicaly using the function gameObject.addPosition
-                if(!true){
-                    //raw new created Vector2
-                    player.addPosition({x: moveSpeed * xyInput.x, y: moveSpeed * xyInput.y})
-                } else if(!true){
-                    //multiplied xyInput
-                    player.addPosition(operations.multiplyVectors(xyInput, moveSpeed))
-                } else {
-                    //multiplied using Object.prototype
-                    player.addPosition(xyInput.multipliedBy(moveSpeed))
-                }
-            }
-
-            operationVal = 0.01;
-            if(onKey("e")){
-                psize += operationVal
-            } else if(onKey("q")){
-                psize -= operationVal
-            }
-
-            //resizing a gameObject using gameObject.size()
-            player.size({x: [100*psize]})
-
-
-            //creating anothers gameObjects
-            followers[0].position(operations.MVL(followers[0].position(), player.position(), followersMoveSpeed))
-            followers[0].size(operations.MVL(followers[0].size(), player.size(), followersMoveSpeed))
-            for(i = 1; i< followers.length; i++){
-                followers[i].position(operations.MVL(followers[i].position(), followers[i-1].position(), followersMoveSpeed))
-            followers[i].size(operations.MVL(followers[i].size(), followers[i-1].size(), followersMoveSpeed))
-            }
-        }
-
-        
-        
-
-        var logging = "", loggingIndex = 0;
-        var logger = (event, err) => {
-            textLog = (err==undefined?"":"Error => ") + event
-            if(err == "error"){
-                throw textLog
-            }
-            logging += "["+(loggingIndex++) + "]: " + textLog +"\n"
-        }
-        var onclickLog = () => {
-            window.open('').document.write('<html><style>#txtA{font-size:20px;height:100%;width:100%;}</style><textarea readonly id='+'txtA'+'>'+logging+'</textarea></html>')
-            //window.open('').document.write('<html><style>#txtA{font-size:20px;height:100%;width:100%;}</style><textarea readonly id='+'txtA'+'>'+JSON.stringify(keyHandler, null, 2)+'</textarea></html>')
-        }
-
-
-        frameRate = 1;
-        var updateInterval;
-        var startGame = () => {
-            start();
-            updateInterval = setInterval(update, frameRate);
-        }
-        if(!true){
-            startGame()
+            /* 
+                it runs outside the gameObjects.update functions.
+                exemple of usage:
+                player.size(psize)
+            */
         }
     </script>
 </html>
