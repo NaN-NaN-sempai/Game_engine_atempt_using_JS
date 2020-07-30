@@ -244,30 +244,28 @@ class Vector{
             }
         } 
     }
-
-    toType(type){
+    
+    toType(type, repeat){
         const container = this;
-        const returnVector = new Vector("Vector3")
+        var returnVector;
         if(typeof type != "string"){
             new doOnce(()=>{
-                logger("Type must be a strung.\n"+this.id, "error")
+                logger("Type must be a string.\n"+this.id, "error")
             }, "check Vector type on forType: "+this.id)
         } else {
             if(type == "Vector1"){
-                returnVector.x = this.x
-                if(this.y != undefined){delete returnVector.y}
-                if(this.z != undefined){delete returnVector.z}
-                returnVector.points = {get x(){return returnVector.x}}
+                returnVector = new Vector(this.x)
             } else if(type == "Vector2"){
-                returnVector.x = this.x
-                if(this.y == undefined){returnVector.y = 0}else{returnVector.y = this.y}
-                if(this.z != undefined){delete returnVector.z}
-                returnVector.points = {get x(){return returnVector.x},get y(){return returnVector.y}}
+                returnVector = new Vector(
+                    (repeat=="y"?this.y:repeat=="z"?this.z:(this.x==undefined?0:this.x)),
+                    (repeat=="x"?this.x:repeat=="z"?this.z:(this.y==undefined?0:this.y))
+                )
             } else if(type == "Vector3"){
-                returnVector.x = this.x
-                if(this.y == undefined){returnVector.y = 0}else{returnVector.y = this.y}
-                if(this.z == undefined){returnVector.z = 0}else{returnVector.z = this.z}
-                returnVector.points = {get x(){return returnVector.x},get y(){return returnVector.y},get z(){return returnVector.z}}
+                returnVector = new Vector(
+                    (repeat=="y"?this.y:repeat=="z"?this.z:(this.x==undefined?0:this.x)),
+                    (repeat=="x"?this.x:repeat=="z"?this.z:(this.y==undefined?0:this.y)),
+                    (repeat=="x"?this.x:repeat=="y"?this.y:(this.z==undefined?0:this.z))
+                )
             }
         }
 
@@ -279,14 +277,15 @@ class Vector{
 var gameObjects = []
 class gameObject {
     constructor(rawObj){
+        rawObj = (rawObj == undefined?{}:rawObj)
         this.id = (rawObj.id != undefined)?
             (gameObjects.find(e=>e.id==rawObj.id) != undefined?
-                "already exists "+rawObj.id+"_"+gameObjects.length
+                "already exists "+rawObj.id+"_"+gameObjects.length  
                 :
             rawObj.id
             )
             :
-        "undefined gameObject_"+gameObjects,length
+        "unregistred id_"+gameObjects.length
 
         //creation of the HTML element section
         var gameObj = document.createElement('div');
@@ -304,7 +303,7 @@ class gameObject {
         [gameObj.style.left, gameObj.style.top] = (rawObj.startPosition == undefined?
                                                         [0,0]
                                                         :
-                                                    Object.getOwnPropertyNames(rawObj.startPosition).map(e=>rawObj.startPosition[e]))
+                                                    Object.getOwnPropertyNames(rawObj.startPosition.points).map(e=>rawObj.startPosition[e]))
 
         this.appendTo = rawObj.appendTo!=undefined?rawObj.appendTo:"gameTab"
         document.getElementById(this.appendTo).appendChild(gameObj);

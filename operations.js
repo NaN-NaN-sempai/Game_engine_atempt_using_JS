@@ -94,46 +94,52 @@ var operations = {
     }
 }
 
-Vector.prototype.sumedTo = function(sum){
+Vector.prototype.sumedTo = function(num){
     vectorSend = new Vector(this.type)
     Object.getOwnPropertyNames(this.points).forEach((e)=>{
-        vectorSend[e] = this[e] + (typeof sum == "number"?sum:(typeof sum == "object"?sum[e]:0))
+        vectorSend[e] = this[e] + (typeof num == "number"?num:(typeof num == "object"?(this.type!=num.type?num.toType(this.type)[e]:num[e]):0))
     })
     return vectorSend
 }
-Vector.prototype.subtractedTo = function(sub){
+Vector.prototype.subtractedTo = function(num){
     vectorSend = new Vector(this.type)
     Object.getOwnPropertyNames(this.points).forEach((e)=>{
-        vectorSend[e] = this[e] - (typeof sub == "number"?sub:(typeof sub == "object"?sub[e]:0))
+        vectorSend[e] = this[e] - (typeof num == "number"?num:(typeof num == "object"?(this.type!=num.type?num.toType(this.type)[e]:num[e]):0))
     })
     return vectorSend
 }
-Vector.prototype.multipliedBy = function (mult){
+
+Vector.prototype.multipliedBy = function (num){
     vectorSend = new Vector(this.type)
     Object.getOwnPropertyNames(this.points).forEach((e,i)=>{
-        vectorSend[e] = this[e] * (typeof mult == "number"?mult:(typeof mult == "object"?mult[e]:1))
+        vectorSend[e] = this[e] * (typeof num == "number"?num:(typeof num == "object"?(this.type!=num.type?num.toType(this.type)[e]:num[e]):0))
     })
     return vectorSend
 }
-Vector.prototype.dividedBy = function (div){
+Vector.prototype.dividedBy = function (num){
     vectorSend = new Vector(this.type)
     Object.getOwnPropertyNames(this.points).forEach((e,i)=>{
-        vectorSend[e] = this[e] / (typeof div == "number"?div:(typeof div == "object"?div[e]:1))
+        vectorSend[e] = this[e] / (typeof num == "number"?num:(typeof num == "object"?(this.type!=num.type?num.toType(this.type)[e]:num[e]):0))
     })
     return vectorSend
 }
-Vector.prototype.elevatedBy = function (elev){
-    if(typeof elev != "number"){
+
+Vector.prototype.reverse = function(){
+    return this.multipliedBy(-1)
+}
+
+Vector.prototype.elevatedBy = function (num){
+    if(typeof num != "number"){
         logger("The element must be a number.")
     }
     vectorSend = new Vector(this.points)
-    if(elev == 0){
-        Object.getOwnPropertyNames(this).filter(e=>(e!="id"&&e!="points"&&e!="type")).forEach((e)=>{
+    if(num == 0){
+        Object.getOwnPropertyNames(this.points).forEach((e)=>{
             vectorSend[e] = 1
         })
     }
-    for(i = 1; i < elev; i++){
-        Object.getOwnPropertyNames(this).filter(e=>(e!="id"&&e!="points"&&e!="type")).forEach((e)=>{
+    for(i = 1; i < num; i++){
+        Object.getOwnPropertyNames(this.points).forEach((e)=>{
             vectorSend[e] = vectorSend[e] * this[e]
         })
     }

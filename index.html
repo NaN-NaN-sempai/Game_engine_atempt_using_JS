@@ -94,7 +94,7 @@
             player = new gameObject({
                 id: "player",
                 startSize: 100,
-                startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                startPosition: new Vector((gameTabSize.x/2),(gameTabSize.y/2)),
                 //using existing function
                 start: playerStart,
                 update: playerUpdate
@@ -116,7 +116,7 @@
                 followers.push(new gameObject({
                     id: "follower"+i,
                     startSize: 100,
-                    startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                    startPosition: new Vector((gameTabSize.x/2),(gameTabSize.y/2)),
                     customProps: {
                         index: i,
                         color: colorLerp
@@ -124,7 +124,7 @@
                     //using raw functions
                     start: function(){
                         //use any CSS style using gameObject.style
-                        this.style.background = "rgb("+this.customProps.color+","+this.customProps.color+","+this.customProps.color+")"
+                        this.style.background = "rgb("+this.customProps.color+","+0+","+(this.customProps.color/2)+")"
                         this.style.borderRadius = "50%"
                     },
                     update: function(){
@@ -149,7 +149,7 @@
             pleft = new gameObject({
                 id: "pleft",
                 startSize: 100,
-                startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                startPosition: new Vector((gameTabSize.x/2),(gameTabSize.y/2)),
                 customProps: {
                     moreOffset: 0, side: true
                 },
@@ -181,7 +181,7 @@
             pright = new gameObject({
                 id: "pright",
                 startSize: 100,
-                startPosition: {x: (gameTabSize.x/2), y: (gameTabSize.y/2)},
+                startPosition: new Vector((gameTabSize.x/2),(gameTabSize.y/2)),
                 customProps: {
                     moreOffset: 0, side: true
                 },
